@@ -27,7 +27,11 @@ python -m grpc_tools.protoc -I. --python_out=. --pyi_out=. --grpc_python_out=. r
 Docker Compose:docker compose up -d --build
 
 3. Доступ к Сервисам (URLs)
+
 СервисАдресDjango APIhttp://localhost:8000
+
 FastAPI Trackinghttp://localhost:8001
+
 Kafka UI (AKHQ)http://localhost:8080
+
 React Frontendhttp://localhost:3000
