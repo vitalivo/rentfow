@@ -45,7 +45,8 @@ message CreateLeaseRequest {
   string start_date = 3;
   string end_date = 4;
   float monthly_rent = 5;
-  int32 payment_day = 6;
+  int32 django_lease_id = 6;
+  int32 payment_day = 7;
 }
 
 message CreateLeaseResponse {

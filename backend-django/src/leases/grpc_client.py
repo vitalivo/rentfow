@@ -3,7 +3,8 @@
 import grpc
 import logging
 from typing import Dict, Any
-from datetime import date
+from datetime import date # <-- Импорт date должен быть здесь
+
 # --- СТАНДАРТНЫЙ ИМПОРТ ---
 try:
     import rentflow_pb2
@@ -50,7 +51,8 @@ def _get_lease_stub():
 def send_create_lease_request(
     property_data: Dict[str, Any], 
     tenant_data: Dict[str, Any], 
-    lease_details: Dict[str, Any]
+    lease_details: Dict[str, Any],
+    django_lease_id: int # <-- НОВЫЙ АРГУМЕНТ (Шаг 4.3)
 ) -> rentflow_pb2.CreateLeaseResponse:
     """
     Отправляет gRPC-запрос на создание аренды в сервис FastAPI.
@@ -66,10 +68,12 @@ def send_create_lease_request(
         payment_day_val = lease_details.get('payment_day')
         start_date_obj = lease_details.get('start_date')
         end_date_obj = lease_details.get('end_date')
+        
         # Если DRF почему-то пропустил отсутствие обязательных полей
         if monthly_rent_val is None or payment_day_val is None or start_date_obj is None or end_date_obj is None:
-            raise ValueError(f"Обязательные поля 'monthly_rent' или 'payment_day' отсутствуют.")
+            raise ValueError("Отсутствуют обязательные поля аренды.")
             
+        # Преобразование datetime.date в строку (YYYY-MM-DD), это мы исправили ранее
         start_date_str = start_date_obj.isoformat()
         end_date_str = end_date_obj.isoformat()
             
@@ -84,11 +88,15 @@ def send_create_lease_request(
                 last_name=tenant_data.get('last_name'),
                 email=tenant_data.get('email')
             ),
-            # Безопасный доступ к строковым полям
+            
+            # НОВОЕ ПОЛЕ: Передаем ID, созданный в Django
+            django_lease_id=django_lease_id,
+            
+            # Строковые поля дат
             start_date=start_date_str,
             end_date=end_date_str,
             
-            # Явное приведение типов с использованием безопасно полученных значений
+            # Числовые поля
             monthly_rent=float(monthly_rent_val),
             payment_day=int(payment_day_val)
         )
