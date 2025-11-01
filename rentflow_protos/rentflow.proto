@@ -1,0 +1,85 @@
+// shared-protos/rentflow.proto
+
+syntax = "proto3";
+
+package rentflow;
+
+// Сервис для управления арендой
+service LeaseService {
+  rpc CreateLease(CreateLeaseRequest) returns (CreateLeaseResponse);
+  rpc GetLease(GetLeaseRequest) returns (GetLeaseResponse);
+  rpc UpdateLease(UpdateLeaseRequest) returns (UpdateLeaseResponse);
+  rpc ListLeases(ListLeasesRequest) returns (ListLeasesResponse);
+}
+
+// Модели
+message Tenant {
+  int32 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string phone = 5;
+}
+
+message Property {
+  int32 id = 1;
+  string address = 2;
+  string city = 3;
+  string country = 4;
+}
+
+message Lease {
+  int32 id = 1;
+  Property property = 2;
+  Tenant tenant = 3;
+  string start_date = 4;      // YYYY-MM-DD
+  string end_date = 5;        // YYYY-MM-DD
+  float monthly_rent = 6;
+  int32 payment_day = 7;      // день месяца (1-31)
+}
+
+// Запросы и ответы
+message CreateLeaseRequest {
+  Property property = 1;
+  Tenant tenant = 2;
+  string start_date = 3;
+  string end_date = 4;
+  float monthly_rent = 5;
+  int32 payment_day = 6;
+}
+
+message CreateLeaseResponse {
+  bool success = 1;
+  Lease lease = 2;
+  string message = 3;
+}
+
+message GetLeaseRequest {
+  int32 lease_id = 1;
+}
+
+message GetLeaseResponse {
+  bool found = 1;
+  Lease lease = 2;
+}
+
+message UpdateLeaseRequest {
+  int32 lease_id = 1;
+  optional float monthly_rent = 2;
+  optional string end_date = 3;
+}
+
+message UpdateLeaseResponse {
+  bool success = 1;
+  Lease lease = 2;
+}
+
+message ListLeasesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListLeasesResponse {
+  repeated Lease leases = 1;
+  int32 total_count = 2;
+}
