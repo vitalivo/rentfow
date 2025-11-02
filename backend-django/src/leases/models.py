@@ -60,6 +60,23 @@ class Lease(models.Model):
         help_text="Число месяца (1-31), когда арендатор должен платить"
     )
     notes = models.TextField("Примечания", blank=True, null=True)
+    fastapi_id = models.CharField(
+        "FastAPI ID отслеживания", 
+        max_length=100, 
+        unique=True, 
+        null=True, 
+        blank=True
+    )
+    status = models.CharField(
+        "Статус аренды (Kafka)", 
+        max_length=50, 
+        default='INITIATED'
+    )
+    last_event_type = models.CharField(
+        "Последнее событие Kafka", 
+        max_length=50, 
+        default='LEASE_CREATED'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

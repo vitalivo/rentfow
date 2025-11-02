@@ -8,3 +8,4 @@ protobuf>=5.26.0
 grpcio-tools>=1.62.0
 django-grpc==0.1.1 
 djangorestframework-simplejwt==5.3.*
+kafka-python==2.0.*

@@ -1,6 +1,9 @@
+version: '3.8'
+
 services:
   # === База данных ===
   postgres:
+    # ... (Без изменений) ...
     image: postgres:16
     container_name: rentflow-postgres
     environment:
@@ -10,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # ← Docker управляет томом
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rentuser -d rentflow"]
       interval: 10s
@@ -20,6 +23,7 @@ services:
 
   # === Кэш и брокер ===
   redis:
+    # ... (Без изменений) ...
     image: redis:7-alpine
     container_name: rentflow-redis
     command: --appendonly yes
@@ -36,7 +40,9 @@ services:
 
   # === Zookeeper & Kafka ===
   zookeeper:
+    # ... (Без изменений) ...
     image: confluentinc/cp-zookeeper:latest
+    container_name: rentflow-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -58,10 +64,14 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # --- ВОЗВРАТ К ЧИСТОЙ КОНФИГУРАЦИИ ---
+      KAFKA_LISTENERS: PLAINTEXT_INTERNAL://0.0.0.0:29092,PLAINTEXT_EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_INTERNAL://kafka:29092,PLAINTEXT_EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_INTERNAL:PLAINTEXT,PLAINTEXT_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      # --- КОНЕЦ ВОЗВРАТА ---
+
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     healthcheck:
@@ -72,25 +82,23 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  # === AKHQ — Kafka UI ===
-  akhq:
-    image: tchiotludo/akhq:latest
-    container_name: rentflow-akhq
+  # === НОВЫЙ МОНИТОРИНГ: Kafka UI (от Provectus) ===
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: rentflow-kafka-ui
     ports:
-      - "8080:8080"
+      - "8080:8080" # Используем тот же порт, что и AKHQ
     environment:
-      AKHQ_CONFIGURATION: |
-        akhq:
-          connections:
-            docker-kafka:
-              properties:
-                bootstrap.servers: "kafka:9092"
+      # Указываем Kafka UI, где искать Kafka. Используем внутренний адрес.
+      KAFKA_CLUSTERS_0_NAME: rentflow-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
     depends_on:
       - kafka
     restart: unless-stopped
 
   # === Django Backend ===
   django-web:
+    # ... (Без изменений) ...
     build: ./backend-django
     container_name: rentflow-django
     command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
@@ -110,12 +118,36 @@ services:
       - JWT_SECRET_KEY=insecure-dev-key-change-in-prod
       - DEBUG=True
       - PYTHONPATH=/rentflow_protos:/app
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092 
     env_file:
       - ./backend-django/src/.env
     restart: unless-stopped
 
+  django-consumer:
+    # ... (Без изменений) ...
+    build: ./backend-django
+    container_name: rentflow-django-consumer
+    command: sh -c "python manage.py run_kafka_consumer"
+    volumes:
+      - ./backend-django/src:/app
+      - ./rentflow_protos:/rentflow_protos
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=rentflow
+      - DB_USER=rentuser
+      - DB_PASSWORD=rentpass
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - PYTHONPATH=/rentflow_protos:/app
+    restart: always
+
   # === FastAPI Service ===
   fastapi-tracking:
+    # ... (Без изменений) ...
     build: ./backend-fastapi
     container_name: rentflow-fastapi
     command: sh -c "python main.py"
@@ -128,20 +160,22 @@ services:
       - kafka
       - postgres
     environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - POSTGRES_URL=postgresql+asyncpg://rentuser:rentpass@postgres:5432/rentflow
       - PYTHONPATH=/app:/
     restart: unless-stopped
 
   # === React Frontend ===
   react-frontend:
-    build: ./frontend-react/fleettrack-frontend  # ← Указываем путь к папке с Dockerfile
+    # ... (Без изменений) ...
+    build: ./frontend-react/fleettrack-frontend
     container_name: rentflow-frontend
     ports:
       - "3000:80"
     depends_on:
       - django-web
     restart: unless-stopped
+      
 volumes:
   postgres_data:
     name: rentflow_postgres_data
