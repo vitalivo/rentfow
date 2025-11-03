@@ -56,7 +56,7 @@ class Command(BaseCommand):
             fastapi_id = data.get('fastapi_id')
             details = data.get('details', {})
             
-            logger.info(f"--- Message Received | Offset: {message.offset} ---")
+            print(f"!!! KAFKA SUCCESS CHECK !!! Offset: {message.offset} | Event: {event_type} | Django ID: {django_id}")
 
             if not django_id:
                 logger.error("Сообщение проигнорировано: отсутствует поле 'django_id'.")

@@ -55,6 +55,11 @@ class LeaseServiceStub(object):
                 request_serializer=rentflow__pb2.ListLeasesRequest.SerializeToString,
                 response_deserializer=rentflow__pb2.ListLeasesResponse.FromString,
                 _registered_method=True)
+        self.TerminateLease = channel.unary_unary(
+                '/rentflow.LeaseService/TerminateLease',
+                request_serializer=rentflow__pb2.TerminateLeaseRequest.SerializeToString,
+                response_deserializer=rentflow__pb2.TerminateLeaseResponse.FromString,
+                _registered_method=True)
 
 
 class LeaseServiceServicer(object):
@@ -74,13 +79,25 @@ class LeaseServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def UpdateLease(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """--- ИЗМЕНЕНО ---
+        Убедимся, что UpdateLease определен
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ListLeases(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Оставим ListLeases, он не мешает
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def TerminateLease(self, request, context):
+        """--- ДОБАВЛЕНО ---
+        Добавляем метод TerminateLease
+        --- КОНЕЦ ДОБАВЛЕНИЯ ---
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -107,6 +124,11 @@ def add_LeaseServiceServicer_to_server(servicer, server):
                     servicer.ListLeases,
                     request_deserializer=rentflow__pb2.ListLeasesRequest.FromString,
                     response_serializer=rentflow__pb2.ListLeasesResponse.SerializeToString,
+            ),
+            'TerminateLease': grpc.unary_unary_rpc_method_handler(
+                    servicer.TerminateLease,
+                    request_deserializer=rentflow__pb2.TerminateLeaseRequest.FromString,
+                    response_serializer=rentflow__pb2.TerminateLeaseResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -218,6 +240,33 @@ class LeaseService(object):
             '/rentflow.LeaseService/ListLeases',
             rentflow__pb2.ListLeasesRequest.SerializeToString,
             rentflow__pb2.ListLeasesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def TerminateLease(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/rentflow.LeaseService/TerminateLease',
+            rentflow__pb2.TerminateLeaseRequest.SerializeToString,
+            rentflow__pb2.TerminateLeaseResponse.FromString,
             options,
             channel_credentials,
             insecure,

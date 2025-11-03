@@ -15,112 +15,109 @@ except ImportError:
     raise
 
 # Настраиваем логгер для этого модуля
+import os
+
+
 logger = logging.getLogger(__name__)
 
-# Адрес сервиса FastAPI из docker-compose.yml
-FASTAPI_TARGET_ADDRESS = 'fastapi-tracking:50051'
+# Получаем адрес gRPC-сервера из настроек Django (или переменных окружения)
+GRPC_SERVER_ADDRESS = os.environ.get("GRPC_SERVER_ADDRESS", "fastapi-tracking:50051")
 
-# --- Кастомные исключения для чистой обработки во views ---
-
+# Кастомные ошибки
 class GRPCConnectionError(Exception):
-    """Не удалось установить соединение с gRPC-сервером."""
+    """Ошибка подключения к gRPC-серверу."""
     pass
 
 class GRPCRequestError(Exception):
-    """Ошибка во время выполнения gRPC-запроса (сервер FastAPI вернул ошибку)."""
+    """Ошибка при обработке gRPC-запроса на стороне сервера."""
     pass
 
-
-def _get_lease_stub():
-    """Создает gRPC-стаб для взаимодействия с FastAPI."""
+def _get_stub():
+    """Создает и возвращает gRPC-стаб."""
     try:
-        channel = grpc.insecure_channel(FASTAPI_TARGET_ADDRESS)
-        # Проверяем готовность канала с таймаутом 5 секунд
+        # Используем insecure_channel, так как сервисы находятся в одной Docker-сети
+        channel = grpc.insecure_channel(GRPC_SERVER_ADDRESS)
+        # Проверяем доступность канала
         grpc.channel_ready_future(channel).result(timeout=5)
-        logger.debug(f"gRPC канал к {FASTAPI_TARGET_ADDRESS} готов.")
         return rentflow_pb2_grpc.LeaseServiceStub(channel)
-    
-    except grpc.FutureTimeoutError:
-        logger.error(f"ОШИБКА: Не удалось подключиться к gRPC-серверу {FASTAPI_TARGET_ADDRESS} за 5 сек.")
-        raise GRPCConnectionError(f"Сервис отслеживания (FastAPI) недоступен.")
+    except grpc.FutureTimeoutError as e:
+        logger.error(f"gRPC Connection Timeout: {e}")
+        raise GRPCConnectionError(f"Не удалось подключиться к gRPC-серверу по адресу {GRPC_SERVER_ADDRESS}")
     except Exception as e:
-        logger.error(f"Непредвиденная ошибка при создании gRPC-канала: {e}")
-        raise GRPCConnectionError(str(e))
+        logger.error(f"gRPC Connection Error: {e}")
+        raise GRPCConnectionError(f"Ошибка подключения к gRPC-серверу: {e}")
 
 
-def send_create_lease_request(
-    property_data: Dict[str, Any], 
-    tenant_data: Dict[str, Any], 
-    lease_details: Dict[str, Any],
-    django_lease_id: int # <-- НОВЫЙ АРГУМЕНТ (Шаг 4.3)
-) -> rentflow_pb2.CreateLeaseResponse:
-    """
-    Отправляет gRPC-запрос на создание аренды в сервис FastAPI.
-    """
+def send_create_lease_request(property_data, tenant_data, lease_details, django_lease_id):
+    """Отправляет запрос на создание новой аренды."""
+    stub = _get_stub()
     
-    # 1. Получаем stub.
-    stub = _get_lease_stub()
+    # Заполнение protobuf-сообщения
+    request = rentflow_pb2.CreateLeaseRequest(
+        django_lease_id=django_lease_id,  # Ключевой ID для обратной связи
+        property=rentflow_pb2.Property(**property_data),
+        tenant=rentflow_pb2.Tenant(**tenant_data),
+        start_date=lease_details['start_date'].strftime('%Y-%m-%d'),
+        end_date=lease_details['end_date'].strftime('%Y-%m-%d'),
+        monthly_rent=float(lease_details['monthly_rent']),
+        payment_day=lease_details['payment_day'],
+    )
     
-    # 2. Собираем запрос из словарей (Усиленная защита от ошибок типа)
     try:
-        # Безопасное получение значений
-        monthly_rent_val = lease_details.get('monthly_rent')
-        payment_day_val = lease_details.get('payment_day')
-        start_date_obj = lease_details.get('start_date')
-        end_date_obj = lease_details.get('end_date')
-        
-        # Если DRF почему-то пропустил отсутствие обязательных полей
-        if monthly_rent_val is None or payment_day_val is None or start_date_obj is None or end_date_obj is None:
-            raise ValueError("Отсутствуют обязательные поля аренды.")
-            
-        # Преобразование datetime.date в строку (YYYY-MM-DD), это мы исправили ранее
-        start_date_str = start_date_obj.isoformat()
-        end_date_str = end_date_obj.isoformat()
-            
-        request = rentflow_pb2.CreateLeaseRequest(
-            property=rentflow_pb2.Property(
-                address=property_data.get('address'),
-                city=property_data.get('city'),
-                country=property_data.get('country')
-            ),
-            tenant=rentflow_pb2.Tenant(
-                first_name=tenant_data.get('first_name'),
-                last_name=tenant_data.get('last_name'),
-                email=tenant_data.get('email')
-            ),
-            
-            # НОВОЕ ПОЛЕ: Передаем ID, созданный в Django
-            django_lease_id=django_lease_id,
-            
-            # Строковые поля дат
-            start_date=start_date_str,
-            end_date=end_date_str,
-            
-            # Числовые поля
-            monthly_rent=float(monthly_rent_val),
-            payment_day=int(payment_day_val)
-        )
-    except Exception as e:
-        # Логируем, какие данные вызвали ошибку
-        logger.error(f"Ошибка при сборке gRPC-сообщения: {e}. Входные данные: {lease_details}")
-        raise ValueError(f"Ошибка данных при создании gRPC-запроса: {e}")
-
-    
-    # 3. Выполняем RPC-вызов с обработкой ошибок
-    try:
-        logger.info("Отправка gRPC-запроса CreateLease в FastAPI...")
         response = stub.CreateLease(request)
-        
-        if not response.success:
-            logger.warning(f"FastAPI вернул ошибку обработки: {response.message}")
-        else:
-            logger.info(f"FastAPI успешно создал аренду: {response.lease.id}")
-            
         return response
-
     except grpc.RpcError as e:
-        logger.error(f"Критическая ошибка gRPC (RpcError) при вызове CreateLease: {e.details()}")
-        raise GRPCRequestError(f"Ошибка RPC: {e.details()}")
-    except Exception as e:
-        logger.error(f"Непредвиденная ошибка при вызове gRPC: {e}")
-        raise GRPCRequestError(f"Непредвиденная ошибка: {e}")
+        logger.error(f"gRPC RPC Error in CreateLease: {e}")
+        raise GRPCRequestError(f"Ошибка gRPC при создании аренды: {e.details()}")
+    
+# ----------------------------------------------------------------------
+# --- НОВЫЕ МЕТОДЫ ОБНОВЛЕНИЯ И ЗАВЕРШЕНИЯ ---
+# ----------------------------------------------------------------------
+
+def send_update_lease_request(fastapi_lease_id: int, django_lease_id: int, update_fields: dict):
+    """Отправляет запрос на обновление существующей аренды."""
+    stub = _get_stub()
+    
+    # 1. Формируем основной запрос
+    request_kwargs = {
+        'lease_id': int(fastapi_lease_id), # В вашем proto ID назван 'lease_id'
+        # Мы не можем отправить django_lease_id, т.к. его нет в UpdateLeaseRequest
+        # Мы можем добавить его в .proto, но пока обойдемся без него для теста.
+    }
+
+    # Добавляем опциональные поля только если они есть в update_fields
+    if 'monthly_rent' in update_fields:
+        # Убедитесь, что передаете float (proto использует float)
+        request_kwargs['monthly_rent'] = float(update_fields['monthly_rent']) 
+
+    if 'end_date' in update_fields:
+        # Убедитесь, что передаете строку YYYY-MM-DD
+        request_kwargs['end_date'] = update_fields['end_date'].strftime('%Y-%m-%d')
+    
+    request = rentflow_pb2.UpdateLeaseRequest(**request_kwargs)
+    
+    try:
+        response = stub.UpdateLease(request)
+        return response
+    except grpc.RpcError as e:
+        logger.error(f"gRPC RPC Error in UpdateLease: {e}")
+        raise GRPCRequestError(f"Ошибка gRPC при обновлении аренды: {e.details()}")
+
+
+
+def send_terminate_lease_request(fastapi_lease_id: int, django_lease_id: int, actual_end_date: str):
+    """Отправляет запрос на завершение (терминацию) аренды."""
+    stub = _get_stub()
+    
+    request = rentflow_pb2.TerminateLeaseRequest(
+        fastapi_lease_id=int(fastapi_lease_id),
+        django_lease_id=django_lease_id,
+        actual_end_date=actual_end_date.strftime('%Y-%m-%d') # Дата должна быть в формате 'YYYY-MM-DD'
+    )
+    
+    try:
+        response = stub.TerminateLease(request)
+        return response
+    except grpc.RpcError as e:
+        logger.error(f"gRPC RPC Error in TerminateLease: {e}")
+        raise GRPCRequestError(f"Ошибка gRPC при завершении аренды: {e.details()}")

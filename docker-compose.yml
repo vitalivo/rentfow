@@ -127,7 +127,7 @@ services:
     # ... (Без изменений) ...
     build: ./backend-django
     container_name: rentflow-django-consumer
-    command: sh -c "python manage.py run_kafka_consumer"
+    command: sh -c "python -u manage.py run_kafka_consumer"
     volumes:
       - ./backend-django/src:/app
       - ./rentflow_protos:/rentflow_protos
