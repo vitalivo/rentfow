@@ -4,7 +4,7 @@ import grpc
 import logging
 from typing import Dict, Any
 from datetime import date # <-- Импорт date должен быть здесь
-
+from datetime import datetime
 # --- СТАНДАРТНЫЙ ИМПОРТ ---
 try:
     import rentflow_pb2
@@ -121,3 +121,44 @@ def send_terminate_lease_request(fastapi_lease_id: int, django_lease_id: int, ac
     except grpc.RpcError as e:
         logger.error(f"gRPC RPC Error in TerminateLease: {e}")
         raise GRPCRequestError(f"Ошибка gRPC при завершении аренды: {e.details()}")
+    
+    
+    
+# ====================================================================
+# Добавьте этот код для ТЕСТИРОВАНИЯ
+# ====================================================================
+# Вам понадобится импортировать KafkaProducer
+from kafka import KafkaProducer
+import json
+import os
+
+# Инициализация тестового Producer (должно быть глобальным)
+KAFKA_BOOTSTRAP_SERVERS = os.environ.get('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
+TEST_PRODUCER = KafkaProducer(
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+
+def send_test_event(event_type, django_id, fastapi_id, details=None):
+    """
+    Отправляет произвольное тестовое событие в топик Kafka.
+    Используется только для отладки Consumer.
+    """
+    event = {
+        'event_type': event_type,
+        'django_id': django_id,
+        'fastapi_id': fastapi_id,
+        'timestamp': datetime.now().isoformat(),
+        'details': details or {}
+    }
+    try:
+        TEST_PRODUCER.send('lease_events', event)
+        TEST_PRODUCER.flush() # Немедленно отправить сообщение
+        print(f"✅ TEST PRODUCER: Sent {event_type} for Django ID {django_id} to Kafka.")
+        return True
+    except Exception as e:
+        print(f"❌ TEST PRODUCER Error: {e}")
+        return False
+# ====================================================================   
+    
+    
