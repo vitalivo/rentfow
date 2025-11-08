@@ -6,6 +6,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends gettext libgettextpo-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl
 
 WORKDIR /app
 

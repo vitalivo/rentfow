@@ -115,7 +115,9 @@ services:
       - DB_NAME=rentflow
       - DB_USER=rentuser
       - DB_PASSWORD=rentpass
+      - SECRET_KEY=insecure-dev-key-change-in-prod
       - JWT_SECRET_KEY=insecure-dev-key-change-in-prod
+      - JWT_ALGORITHM=HS256
       - DEBUG=True
       - PYTHONPATH=/rentflow_protos:/app
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092 
@@ -143,26 +145,27 @@ services:
       - DB_PASSWORD=rentpass
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - PYTHONPATH=/rentflow_protos:/app
+      - SECRET_KEY=insecure-dev-key-change-in-prod
     restart: always
 
   # === FastAPI Service ===
+# === FastAPI Service ===
   fastapi-tracking:
-    # ... (Без изменений) ...
     build: ./backend-fastapi
     container_name: rentflow-fastapi
-    command: sh -c "python main.py"
+    # command: uvicorn src.main:app --host 0.0.0.0 --port 8001
     volumes:
-      - ./backend-fastapi/src:/app
+      # - ./backend-fastapi:/app
       - ./rentflow_protos:/rentflow_protos
     ports:
-      - "8001:8001"
-    depends_on:
-      - kafka
-      - postgres
+      - "8011:8001"
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - POSTGRES_URL=postgresql+asyncpg://rentuser:rentpass@postgres:5432/rentflow
-      - PYTHONPATH=/app:/
+      - SECRET_KEY=insecure-dev-key-change-in-prod
+      - JWT_SECRET_KEY=insecure-dev-key-change-in-prod
+      - PYTHONPATH=/app
+      - JWT_ALGORITHM=HS256
     restart: unless-stopped
 
   # === React Frontend ===

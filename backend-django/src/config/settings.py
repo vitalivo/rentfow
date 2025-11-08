@@ -145,18 +145,26 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Настройки JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'SIGNING_KEY': config('JWT_SECRET_KEY', default='insecure-dev-key-change-in-prod'),
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    # Алгоритм подписи токена (используйте тот же в FastAPI)
+    'ALGORITHM': 'HS256', 
+    # Срок действия токена доступа (Access Token)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60), 
+    # Срок действия токена обновления (Refresh Token)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # Тип токена в заголовке Authorization: Bearer <TOKEN>
+    'AUTH_HEADER_TYPES': ('Bearer',), 
+    # Используем уникальный идентификатор пользователя (User ID)
+    'USER_ID_FIELD': 'id', 
+    # Поле User ID в токене
+    'USER_ID_CLAIM': 'user_id', 
+    "SIGNING_KEY": os.getenv("JWT_SECRET_KEY", SECRET_KEY),
 }
 
 # Настройки REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',

@@ -30,7 +30,7 @@ Docker Compose:docker compose up -d --build
 
 СервисАдресDjango APIhttp://localhost:8000
 
-FastAPI Trackinghttp://localhost:8001
+FastAPI Trackinghttp://localhost:8011
 
 Kafka UI (AKHQ)http://localhost:8080
 

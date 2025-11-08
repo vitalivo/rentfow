@@ -6,3 +6,8 @@ kafka-python==2.0.*
 protobuf>=5.26.0
 grpcio>=1.62.0 
 grpcio-tools>=1.62.0
+python-jose
+sqlalchemy
+asyncpg
+psycopg2-binary
+python-jose[cryptography]
