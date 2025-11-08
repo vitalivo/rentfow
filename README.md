@@ -28,10 +28,10 @@ Docker Compose:docker compose up -d --build
 
 3. Доступ к Сервисам (URLs)
 
-СервисАдресDjango APIhttp://localhost:8000
+СервисАдресDjango API http://localhost:8000
 
-FastAPI Trackinghttp://localhost:8011
+FastAPI Tracking http://localhost:8011
 
-Kafka UI (AKHQ)http://localhost:8080
+Kafka UI (AKHQ) http://localhost:8080
 
-React Frontendhttp://localhost:3000
+React Frontend http://localhost:3000
