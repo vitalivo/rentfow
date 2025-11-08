@@ -1,0 +1,13 @@
+[Django Admin/ORM]
+   │
+   │ gRPC (Create/Update/Terminate)
+   ▼
+[FastAPI Services]
+   │
+   │ Kafka Producer (TenantCreated, LeaseCreated, LeaseUpdated, LeaseTerminated)
+   ▼
+[Kafka Broker]
+   │
+   │ Kafka Consumer
+   ▼
+[Django Consumer → ORM Update]

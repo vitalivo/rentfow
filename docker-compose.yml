@@ -168,6 +168,27 @@ services:
       - JWT_ALGORITHM=HS256
     restart: unless-stopped
 
+  fastapi-tenants:
+    build: ./backend-fastapi-tenants
+    container_name: rentflow-fastapi-tenants
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./backend-fastapi-tenants/src:/app
+      - ./rentflow_protos:/rentflow_protos
+    ports:
+      - "8021:8000"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - POSTGRES_URL=postgresql+asyncpg://rentuser:rentpass@postgres:5432/rentflow
+      - JWT_SECRET_KEY=insecure-dev-key-change-in-prod
+      - JWT_ALGORITHM=HS256
+      - PYTHONPATH=/app
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
   # === React Frontend ===
   react-frontend:
     # ... (Без изменений) ...
