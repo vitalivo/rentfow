@@ -43,6 +43,7 @@ python -m grpc_tools.protoc -I. \
   rentflow_protos/rentflow.proto
 
 
+<<<<<<< HEAD
 Запуск всех сервисов:
 docker compose up -d --build
 
@@ -67,3 +68,12 @@ docker compose up -d --build
 
 
 
+=======
+СервисАдресDjango API http://localhost:8000
+
+FastAPI Tracking http://localhost:8011
+
+Kafka UI (AKHQ) http://localhost:8080
+
+React Frontend http://localhost:3000
+>>>>>>> 26c8882cd47015d3077d9198fad483f8091ee7dc
