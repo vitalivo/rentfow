@@ -14,7 +14,10 @@ def health_check():
     return {"status": "ok", "service": "tenants"}
 
 @app.get("/tenant-events")
-def get_tenant_events(limit: int = 10):
+def get_tenant_events(limit: int = 10, event_type: str | None = None):
+    if event_type:
+        filtered = [e for e in tenant_events_log if e.get("event_type") == event_type]
+        return filtered[-limit:]
     return tenant_events_log[-limit:]
 
 

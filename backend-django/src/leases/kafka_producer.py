@@ -25,3 +25,16 @@ def send_tenant_event(event_type, tenant):
     producer.send("tenant_events", event)
     producer.flush()
     print(f"✅ Tenant Event sent: {event_type} for {tenant.id}")
+    
+def send_payment_event(event_type: str, payment_data: dict, django_id: int | None = None, fastapi_id: int | None = None):
+    event = {
+        "event_type": event_type,
+        "django_id": django_id,
+        "fastapi_id": fastapi_id,
+        "timestamp": datetime.utcnow().isoformat(),
+        "details": payment_data
+    }
+    producer.send("payment_events", event)
+    producer.flush()
+    print(f"✅ Payment Event sent: {event_type} for {django_id or payment_data.get('lease_id')}")
+    

@@ -189,6 +189,23 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+
+  fastapi-payments:
+    build: ./backend-fastapi-payments
+    container_name: rentflow-fastapi-payments
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./backend-fastapi-payments/src:/app
+      - ./rentflow_protos:/rentflow_protos
+    ports:
+      - "8023:8000"
+    environment:
+      - KAFKA_BROKER=kafka:29092
+      - PYTHONPATH=/app
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped   
   # === React Frontend ===
   react-frontend:
     # ... (Без изменений) ...
