@@ -1,6 +1,6 @@
 # leases/admin.py
 from django.contrib import admin
-from .models import Property, Tenant, Lease
+from .models import Property, Tenant, Lease, Payment
 from django.utils.translation import gettext_lazy as _
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
@@ -25,3 +25,10 @@ class LeaseAdmin(admin.ModelAdmin):
     list_filter = ('start_date', 'end_date', 'property', 'tenant')
     search_fields = ('property__address', 'tenant__first_name', 'tenant__last_name')
     date_hierarchy = 'start_date'
+    
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ("id", "django_id", "event_type", "ts", "tenant_id", "lease_id", "amount", "currency")
+    search_fields = ("django_id", "tenant_id", "lease_id")
+    list_filter = ("event_type", "currency")
+    

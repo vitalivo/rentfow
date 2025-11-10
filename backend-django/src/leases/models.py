@@ -86,3 +86,32 @@ class Lease(models.Model):
 
     def __str__(self):
         return f"{self.property} → {self.tenant}"
+    
+class Payment(models.Model):
+    django_id = models.BigIntegerField("ID Django", null=True, blank=True)
+    event_type = models.CharField("Тип события", max_length=64)
+    ts = models.DateTimeField("Время события")
+    tenant_id = models.BigIntegerField("ID арендатора", null=True, blank=True)
+    lease_id = models.BigIntegerField("ID договора", null=True, blank=True)
+    amount = models.DecimalField(
+        "Сумма платежа",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    currency = models.CharField("Валюта", max_length=8, null=True, blank=True)
+    payload = models.JSONField("Полные данные события", null=True, blank=True)
+    created_at = models.DateTimeField("Дата создания записи", auto_now_add=True)
+
+    class Meta:
+        managed = False   # таблица создана вручную
+        db_table = "payments"
+        unique_together = (('django_id', 'event_type'),)
+        verbose_name = "Платёж"
+        verbose_name_plural = "Платежи"
+
+    def __str__(self):
+        return f"{self.event_type} {self.amount} {self.currency}"
+
+    
